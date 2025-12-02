@@ -1,59 +1,30 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>粒子信息分享 - 手机友好版</title>
-    <style>
-        :root { --primary: #00ffff; --bg: #050505; }
-        body { margin: 0; overflow: hidden; background: var(--bg); font-family: sans-serif; color: white; }
-        
-        #ui-container {
-            /* 手机优化：放在屏幕底部，宽度占满 */
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            max-width: 100vw; /* 确保不超出屏幕 */
-            background: rgba(0,0,0,0.8); 
-            backdrop-filter: blur(10px);
-            padding: 10px; /* 调整内边距 */
-            border-top-left-radius: 12px; 
-            border-top-right-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-            user-select: none; z-index: 10;
-            display: flex; flex-direction: column; /* 垂直堆叠 */
-        }
-
-        /* 桌面端隐藏，手机端显示 */
-        @media (min-width: 600px) {
-            #ui-container {
-                /* 桌面端恢复到右上角 */
-                position: absolute; top: 20px; right: 20px; width: 280px; 
-                bottom: auto; left: auto;
-                border-radius: 12px;
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>财富管理系统 v11.5 (全功能完整版)</title>
+    
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a' },
+                        gold: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+                    },
+                    fontFamily: { sans: ['Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'] }
+                }
             }
         }
-        
-        /* 输入区域样式 */
-        .input-group { display: flex; gap: 5px; margin-bottom: 10px; }
-        input[type="text"] {
-            flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #333;
-            background: rgba(255,255,255,0.1); color: white; outline: none;
-        }
-        #btn-submit { background: var(--primary); color: black; font-weight: bold; border: none; cursor: pointer; padding: 0 15px; border-radius: 4px; }
-        
-        button {
-            flex: 1; /* 按钮平均分配宽度 */
-            padding: 8px; margin: 3px; background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2); color: #ddd; border-radius: 4px;
-            cursor: pointer; transition: 0.2s; font-size: 12px;
-        }
-        button:hover { background: var(--primary); color: black; }
-        button.active { background: var(--primary); color: black; font-weight: bold; }
-        
-        .button-row { display: flex; margin-bottom: 5px; }
-
-        #loading { position: absolute; inset: 0; background: #000; z-index: 99; display: flex; align-items: center; justify-content: center; color: var(--primary); letter-spacing: 2px; }
-        #webcam { position: absolute; bottom: 20px; left: 20px; width: 100px; opacity: 0.3; transform: scaleX(-1); pointer-events: none; border: 1px solid var(--primary); }
-    </style>
+    </script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script type="importmap">
         {
             "imports": {
@@ -63,209 +34,608 @@
             }
         }
     </script>
-</head>
-<body>
-    <div id="loading">系统初始化中...</div>
 
-    <div id="ui-container">
-        <div class="input-group">
-            <input type="text" id="user-text" placeholder="输入名字/英文..." maxlength="8">
-            <button id="btn-submit" onclick="app.generateText()">生成</button>
+    <style>
+        [v-cloak] { display: none !important; }
+        body { transition: background-color 0.2s; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        html.dark body { background-color: #0f172a; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .nav-item.active { background-color: #e0e7ff; color: #4338ca; border-right: 3px solid #4338ca; }
+        .dark .nav-item.active { background-color: rgba(251, 191, 36, 0.1); color: #fbbf24; border-right: 3px solid #fbbf24; }
+        
+        /* 寻宝一夏特殊样式 */
+        .nav-item.special-tab { margin-top: 20px; background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent); border-top: 1px solid rgba(255,215,0,0.2); color: #d97706; }
+        .dark .nav-item.special-tab { color: #fbbf24; }
+        .nav-item.special-tab.active { background: linear-gradient(90deg, #d97706, #b45309); color: white; border-right: none; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-container table { min-width: 1400px; }
+        .fav-star { cursor: pointer; transition: transform 0.2s; font-size: 1.2em; display: inline-block; }
+        .fav-star:hover { transform: scale(1.2); }
+        .fav-star.active { color: #f59e0b; text-shadow: 0 0 5px rgba(245, 158, 11, 0.5); }
+        .fav-star.inactive { color: #cbd5e1; }
+        .dark .fav-star.inactive { color: #475569; }
+
+        /* Magic Overlay Styles (v11.2 复原) */
+        #magic-overlay { position: fixed; inset: 0; background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%); z-index: 9999; display: none; font-family: 'Helvetica Neue', sans-serif; font-weight: 300; }
+        #magic-overlay.active { display: block; }
+        .stars { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background-image: radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)); background-repeat: repeat; background-size: 250px 250px; opacity: 0.5; animation: twinkle 5s infinite linear; }
+        @keyframes twinkle { 0% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 0.8; } 100% { opacity: 0.3; transform: translateY(-20px); } }
+        .magic-ui-container { position: absolute; bottom: 40px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; z-index: 10001; pointer-events: none; padding-bottom: env(safe-area-inset-bottom); }
+        .magic-btn { pointer-events: auto; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); padding: 10px 24px; border-radius: 50px; cursor: pointer; font-size: 13px; font-weight: 400; letter-spacing: 1px; transition: all 0.4s; backdrop-filter: blur(4px); }
+        .magic-btn:hover { background: rgba(255,255,255,0.15); border-color: #fff; color: #fff; transform: translateY(-2px); }
+        .magic-btn.active { border-color: #fff; color: #fff; background: rgba(255,255,255,0.2); transform: scale(1.1); }
+        #magic-main-btn { padding: 14px 40px; font-size: 16px; letter-spacing: 3px; background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1)); }
+        #magic-text { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); font-size: 2.2rem; color: rgba(255,255,255,0.95); text-shadow: 0 0 15px rgba(255,255,255,0.2); opacity: 0; pointer-events: none; transition: all 2.5s ease; letter-spacing: 8px; filter: blur(10px); z-index: 10002; white-space: nowrap; }
+        #magic-text.visible { opacity: 1; filter: blur(0px); transform: translate(-50%, -52%); }
+        #magic-close { position: absolute; top: 20px; right: 20px; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 24px; z-index: 10003; }
+        #webcam-container { position: absolute; bottom: 10px; right: 10px; width: 120px; height: 90px; z-index: 10000; pointer-events: none; }
+        #webcam, #skeleton-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 4px; transform: scaleX(-1); }
+        #webcam { opacity: 0.3; border: 1px solid rgba(255,255,255,0.3); }
+        #magic-loading { position: absolute; inset: 0; background: #000; z-index: 10005; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; }
+        .magic-loader { width: 40px; height: 40px; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; border-top-color: #fff; animation: spin 1s infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #logoCanvas { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-slate-900 dark:text-gray-200 antialiased">
+    
+    <div id="app" v-cloak class="flex h-screen overflow-hidden relative">
+        <aside class="w-64 bg-white dark:bg-slate-800 flex flex-col z-20 shrink-0 border-r border-gray-200 dark:border-gray-700 shadow-xl">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg bg-indigo-600 text-white dark:bg-gold-500 dark:text-black">W</div>
+                <div><h1 class="text-lg font-bold tracking-wide text-gray-800 dark:text-white">财富管理</h1><p class="text-[10px] tracking-widest text-gray-400">V11.5 全功能版</p></div>
+            </div>
+            <nav class="flex-1 mt-6 space-y-1 px-3">
+                <a @click="currentTab = 'list'" :class="currentTab === 'list' ? 'nav-item active' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700'" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg cursor-pointer transition-colors"><span>📊</span> 基金库管理</a>
+                <a @click="currentTab = 'entry'" :class="currentTab === 'entry' ? 'nav-item active' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700'" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg cursor-pointer transition-colors"><span>📝</span> 新增与协同</a>
+                <a @click="currentTab = 'client'" :class="currentTab === 'client' ? 'nav-item active' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700'" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg cursor-pointer transition-colors"><span>💼</span> 客户配置方案</a>
+                
+                <a @click="switchGameTab" :class="currentTab === 'treasure' ? 'nav-item special-tab active' : 'nav-item special-tab'" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg cursor-pointer transition-colors"><span>🏺</span> 寻宝一夏</a>
+
+                <a @click="launchMagic" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg cursor-pointer text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-slate-700 mt-4"><span>✨</span> 魔法一夏</a>
+            </nav>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3 text-center">
+                <p class="text-xs font-serif italic text-gray-400 dark:text-gray-500">“为信任奉献回报”</p>
+                <div class="flex gap-2 justify-center">
+                    <button @click="toggleTheme" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition">{{ isDark ? '🌙' : '🌞' }}</button>
+                    <button @click="resetData" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-xs text-gray-400 transition" title="重置数据">↺</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto relative bg-gray-100 dark:bg-slate-900" :class="currentTab === 'treasure' ? 'p-0 overflow-hidden' : 'p-8'">
+            
+            <div v-if="currentTab === 'list'" class="space-y-6 h-full flex flex-col">
+                <div class="flex justify-between items-end shrink-0 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white inline-block">全量基金库</h2>
+                        <span class="text-xs text-gray-400 ml-2">（点击星号收藏自选）</span>
+                    </div>
+                    <div class="flex gap-3"><span class="text-xs px-3 py-1 rounded-full border bg-white text-gray-600 dark:bg-gold-500/10 dark:text-gold-400 dark:border-gold-500/20">共 {{ funds.length }} 只</span></div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 flex flex-col flex-1 overflow-hidden">
+                    <div class="table-container flex-1 scroller">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs uppercase bg-gray-50 text-gray-500 dark:bg-slate-700/50 dark:text-gray-400 sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-4 w-16 text-center cursor-pointer hover:text-indigo-600" @click="toggleSort('isFavorite')">自选</th>
+                                    <th class="p-4 cursor-pointer hover:text-indigo-600" @click="toggleSort('code')">代码 {{ sortIcon('code') }}</th>
+                                    <th class="p-4 cursor-pointer hover:text-indigo-600 min-w-[180px]" @click="toggleSort('name')">基金简称 {{ sortIcon('name') }}</th>
+                                    <th class="p-4">类型</th><th class="p-4">风险</th><th class="p-4 text-right cursor-pointer" @click="toggleSort('purchaseFee')">费率</th>
+                                    <th class="p-4">经理</th><th class="p-4">规模</th><th class="p-4">成立</th><th class="p-4 text-center sticky right-0 bg-gray-50 dark:bg-slate-800">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tr v-for="fund in sortedFundsList" :key="fund.code" class="group hover:bg-gray-50 dark:hover:bg-slate-700/50 transition">
+                                    <td class="p-4 text-center" @click.stop="toggleFavorite(fund)">
+                                        <span class="fav-star" :class="fund.isFavorite ? 'active' : 'inactive'">{{ fund.isFavorite ? '★' : '☆' }}</span>
+                                    </td>
+                                    <td class="p-4 font-mono text-indigo-600 dark:text-gray-400">{{ fund.code }}</td>
+                                    <td class="p-4 font-medium text-gray-900 dark:text-white">{{ fund.name }} <span v-if="fund.isHot" class="ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">HOT</span></td>
+                                    <td class="p-4"><span class="px-2 py-1 rounded text-xs border bg-gray-100 dark:bg-slate-700 dark:border-slate-600">{{ fund.type }}</span></td>
+                                    <td class="p-4"><span :class="riskColor(fund.risk)" class="px-2 py-1 rounded text-xs font-medium text-white">{{ fund.risk }}</span></td>
+                                    <td class="p-4 text-right font-mono text-gray-500">{{ fund.purchaseFee }}%</td>
+                                    <td class="p-4 text-gray-400">{{ fund.manager }}</td>
+                                    <td class="p-4 text-gray-500">{{ fund.scale }}</td><td class="p-4 text-gray-500 font-mono text-xs">{{ fund.foundDate }}</td>
+                                    <td class="p-4 text-center sticky right-0 bg-white group-hover:bg-gray-50 dark:bg-slate-800 dark:group-hover:bg-slate-700/50"><button @click="openEditModal(fund)" class="text-xs text-indigo-600 hover:underline dark:text-gray-300">编辑</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'entry'" class="max-w-4xl mx-auto space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">新增与协同</h2>
+                <div class="bg-indigo-50 dark:bg-slate-800 dark:border-gray-700 border border-indigo-100 p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold flex items-center gap-2 text-indigo-800 dark:text-gold-400">🚀 批量导入</h3><div class="flex gap-2"><button @click="downloadTemplate" class="text-xs px-3 py-1.5 rounded border bg-white dark:bg-slate-700 dark:border-gray-600">📥 下载模版</button><button @click="exportData" class="text-xs px-3 py-1.5 rounded border bg-white dark:bg-slate-700 dark:border-gray-600">📤 导出数据</button></div></div>
+                    <textarea v-model="batchJson" class="w-full p-4 text-xs font-mono border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-900 dark:border-gray-600 dark:text-gray-300" placeholder='[{"code":"001"...}]'></textarea>
+                    <div class="mt-3 text-right"><button @click="batchImport" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded shadow font-bold dark:bg-gold-600 dark:text-black">确认导入</button></div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold mb-6 text-gray-700 dark:text-white pl-3 border-l-4 border-indigo-500 dark:border-gold-500">单笔详细录入</h3>
+                    <div class="grid grid-cols-3 gap-6">
+                        <div v-for="field in [{l:'代码',k:'code'},{l:'名称',k:'name'},{l:'类型',k:'type',t:'select',o:['股票型','混合型','债券型','QDII','ETF链接','货币型','指数型']},{l:'风险',k:'risk',t:'select',o:['R1-低风险','R2-中低风险','R3-中风险','R4-中高风险','R5-高风险']},{l:'申购费(%)',k:'purchaseFee',t:'number'},{l:'赎回费(%)',k:'redemptionFee',t:'number'},{l:'经理',k:'manager'},{l:'成立时间',k:'foundDate',t:'date'},{l:'规模(亿)',k:'scale'},{l:'领域',k:'sector'}]">
+                            <label class="text-xs mb-1 block text-gray-500 dark:text-gray-400">{{field.l}}</label>
+                            <select v-if="field.t==='select'" v-model="newFund[field.k]" class="w-full p-2 border rounded bg-gray-50 dark:bg-slate-900 dark:border-slate-600 dark:text-white"><option v-for="opt in field.o">{{opt}}</option></select>
+                            <input v-else v-model="newFund[field.k]" :type="field.t||'text'" class="w-full p-2 border rounded bg-gray-50 dark:bg-slate-900 dark:border-slate-600 dark:text-white">
+                        </div>
+                        <div class="col-span-3 flex items-center gap-2 mt-4"><input type="checkbox" v-model="newFund.isHot" id="newHot" class="w-4 h-4 text-red-600"><label for="newHot" class="text-sm font-bold text-gray-700 dark:text-gray-300">设为热门推荐 (HOT)</label></div>
+                    </div>
+                    <div class="mt-6 text-right"><button @click="addFund" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded shadow">＋ 添加单条</button></div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'client'" class="flex gap-6 h-[calc(100vh-4rem)]">
+                <div class="w-5/12 flex flex-col gap-4">
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm space-y-4 border border-gray-200 dark:border-gray-700">
+                        <div class="flex gap-4"><div class="flex-1"><label class="block text-sm text-gray-500 mb-1">客户姓名</label><input v-model="clientName" type="text" class="w-full text-lg font-bold border-b-2 outline-none pb-1 bg-transparent dark:text-white dark:border-gray-600"></div><div class="flex-1"><label class="block text-sm text-gray-500 mb-1">投资总额</label><input v-model.number="clientTotal" type="number" class="w-full text-lg font-bold text-indigo-700 dark:text-gold-400 border-b-2 outline-none pb-1 bg-transparent dark:border-gray-600"></div></div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <div class="mb-3">
+                            <h3 class="font-bold text-gray-700 dark:text-white mb-2 flex justify-between items-center"><span>配置标的池</span><span class="text-xs text-gray-400">已选 {{ selectedFunds.length }}</span></h3>
+                            <div class="flex gap-2 mb-2"><input v-model="filterText" type="text" placeholder="🔍 搜索代码/名称..." class="flex-1 border rounded px-2 py-1 text-xs outline-none bg-gray-50 dark:bg-slate-900 dark:border-slate-600 dark:text-white"><select v-model="filterType" class="border rounded px-2 py-1 text-xs outline-none w-24 bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white"><option value="全部">全部类型</option><option>股票型</option><option>混合型</option><option>债券型</option><option>QDII</option><option>ETF链接</option><option>货币型</option><option>指数型</option></select></div>
+                        </div>
+                        <div class="overflow-y-auto flex-1 scroller pr-2">
+                            <div v-for="fund in filteredFunds" :key="fund.code" class="flex items-center gap-3 p-3 border rounded mb-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer dark:border-slate-700 transition" @click="toggleSelect(fund)">
+                                <div class="w-5 h-5 border-2 rounded flex items-center justify-center transition" :class="isSelected(fund) ? 'bg-indigo-600 border-indigo-600 dark:bg-gold-500 dark:border-gold-500' : 'border-gray-300 dark:border-gray-500'"><span v-if="isSelected(fund)" class="text-white text-xs">✓</span></div>
+                                <div class="flex-1"><div class="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">{{ fund.name }} <span v-if="fund.isHot" class="text-[10px] text-red-500 bg-red-50 dark:bg-red-900/30 px-1 rounded">HOT</span></div><div class="text-xs text-gray-500">{{ fund.type }} · {{ fund.risk }} · {{ fund.sector || '综合' }}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-7/12 flex flex-col gap-4">
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm flex-1 flex flex-col border border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
+                            <h3 class="font-bold text-gray-700 dark:text-white">比例配置</h3>
+                            <div class="flex gap-2"><button @click="autoAllocate('avg')" class="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded text-gray-600 dark:text-gray-300 transition">⚖️ 均衡</button><button @click="autoAllocate('aggressive')" class="text-xs px-2 py-1 bg-orange-50 hover:bg-orange-100 dark:bg-red-900/30 dark:text-red-400 rounded text-orange-700 transition">🚀 激进</button><button @click="autoAllocate('conservative')" class="text-xs px-2 py-1 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded text-green-700 transition">🛡️ 稳健</button></div>
+                        </div>
+                        <div v-if="selectedFunds.length === 0" class="flex-1 flex items-center justify-center text-gray-400 text-sm border-2 border-dashed rounded bg-gray-50 dark:bg-slate-900 dark:border-gray-700">请左侧筛选并勾选基金</div>
+                        <div v-else class="flex-1 overflow-y-auto scroller">
+                            <table class="w-full text-sm">
+                                <thead class="text-gray-500 dark:text-gray-400 text-left"><tr><th class="p-2">基金名称</th><th class="p-2 w-24">比例 %</th><th class="p-2 text-right">金额</th></tr></thead>
+                                <tbody class="divide-y dark:divide-gray-700"><tr v-for="fund in selectedFunds" :key="fund.code"><td class="py-3 px-2"><div class="font-medium dark:text-gray-200">{{ fund.name }}</div></td><td class="py-3"><input type="number" v-model.number="fund.allocPercent" class="w-16 border rounded px-1 py-1 text-center font-bold text-indigo-600 bg-indigo-50 dark:bg-slate-900 dark:text-gold-400 dark:border-slate-600" min="0" max="100"></td><td class="py-3 text-right font-mono text-gray-600 dark:text-gray-400">{{ (clientTotal * (fund.allocPercent || 0) / 100).toLocaleString() }}</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 pt-4 border-t dark:border-gray-700">
+                             <div class="flex justify-between items-center mb-4"><span class="text-gray-600 dark:text-gray-400">配置进度:</span><div class="flex items-center gap-2"><div class="w-48 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden"><div :class="totalPercent === 100 ? 'bg-green-500' : 'bg-orange-500'" class="h-full transition-all duration-500" :style="{width: totalPercent + '%'}"></div></div><span :class="totalPercent === 100 ? 'text-green-600' : 'text-orange-500'" class="font-bold">{{ totalPercent }}%</span></div></div>
+                             <button @click="generatePreview" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-700 dark:from-gold-600 dark:to-gold-500 text-white dark:text-black py-3 rounded-lg shadow-lg font-bold transition flex items-center justify-center gap-2">📊 生成尊享配置报告 (预览)</button>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm h-48 flex flex-col border border-gray-200 dark:border-gray-700">
+                        <h3 class="font-bold text-gray-700 dark:text-white text-sm mb-2">已归档方案 <span class="text-xs font-normal text-gray-400 ml-2">双击回顾</span></h3>
+                        <div class="overflow-y-auto scroller flex-1">
+                            <div v-for="(s, idx) in savedSchemes" :key="s.id" @dblclick="viewHistory(s)" class="flex justify-between items-center text-xs p-3 border-b dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-slate-700 cursor-pointer transition select-none">
+                                <div><span class="font-bold text-gray-800 dark:text-gray-200">{{ s.clientName }}</span> <span class="text-gray-400 ml-2">{{ s.date }}</span></div>
+                                <div class="flex items-center gap-4"><span class="font-mono text-indigo-600 dark:text-gold-400 font-bold">¥{{ s.total.toLocaleString() }}</span><button @click.stop="deleteScheme(idx)" class="text-gray-400 hover:text-red-500 text-lg px-2">🗑️</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'treasure'" class="h-full w-full overflow-hidden bg-black relative">
+                <iframe id="game-frame" class="w-full h-full border-none"></iframe>
+            </div>
+        </main>
+
+        <div v-if="editingFund" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="editingFund = null">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-[700px] border dark:border-gray-700">
+                <h3 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">编辑基金详情</h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div v-for="field in [{l:'代码',k:'code'},{l:'名称',k:'name'},{l:'类型',k:'type',t:'select',o:['股票型','混合型','债券型','QDII','ETF链接','货币型','指数型']},{l:'风险',k:'risk',t:'select',o:['R1-低风险','R2-中低风险','R3-中风险','R4-中高风险','R5-高风险']},{l:'申购费(%)',k:'purchaseFee',t:'number'},{l:'赎回费(%)',k:'redemptionFee',t:'number'},{l:'经理',k:'manager'},{l:'成立时间',k:'foundDate',t:'date'},{l:'规模(亿)',k:'scale'},{l:'领域',k:'sector'}]">
+                        <label class="text-xs mb-1 block text-gray-500 dark:text-gray-400">{{field.l}}</label>
+                        <select v-if="field.t==='select'" v-model="editingFundData[field.k]" class="w-full p-2 border rounded dark:bg-slate-900 dark:border-gray-600 dark:text-white"><option v-for="opt in field.o">{{opt}}</option></select>
+                        <input v-else v-model="editingFundData[field.k]" :type="field.t||'text'" class="w-full p-2 border rounded dark:bg-slate-900 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div class="col-span-3 flex items-center gap-2 mt-2"><input type="checkbox" v-model="editingFundData.isHot" class="w-4 h-4"><label class="text-sm dark:text-gray-300">设为热门推荐 (HOT)</label></div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3"><button @click="editingFund = null" class="px-4 py-2 border rounded hover:bg-gray-100 dark:text-white dark:hover:bg-slate-700">取消</button><button @click="saveFundEdit" class="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 dark:bg-gold-600 dark:text-black">保存修改</button></div>
+            </div>
         </div>
 
-        <div class="button-row">
-            <button onclick="app.setShape('sphere')" id="btn-sphere" class="active">球体</button>
-            <button onclick="app.setShape('cube')" id="btn-cube">立方</button>
-            <button onclick="app.loadLogo('logo.png')" id="btn-logo">🔴 Logo图</button>
+        <div id="magic-overlay">
+            <div class="stars"></div><div id="magic-loading"><div class="magic-loader"></div><p style="letter-spacing: 2px;">星辰汇聚中...</p></div><div id="magic-status">准备就绪 | 手掌张开释放，捏合收回</div><div id="magic-close" onclick="app.closeMagic()">×</div><div id="magic-text">为信任奉献回报</div>
+            <div class="magic-ui-container"><button id="magic-main-btn" class="magic-btn" onclick="app.toggleMagic()">释放星辰</button><div style="display:flex; gap:15px;"><button class="magic-btn active emoji-btn" onclick="app.switchShape('heart')">❤️</button><button class="magic-btn" onclick="app.switchShape('logo')">China AMC</button><button class="magic-btn emoji-btn" onclick="app.switchShape('planet')">🪐</button></div><button id="skeleton-btn" class="magic-btn" onclick="app.toggleSkeleton()" style="margin-top:-10px; opacity:0.7;">👁️ 骨架</button></div>
+            <div id="webcam-container"><video id="webcam" autoplay playsinline muted></video><canvas id="skeleton-canvas"></canvas></div><canvas id="logoCanvas"></canvas><div id="magic-scene-container"></div>
         </div>
         
-        <div class="button-row">
-            <button onclick="app.toggleAudio()" id="btn-audio">🎵 开启音乐律动</button>
+        <div v-if="viewingScheme" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60" @click.self="viewingScheme = null" style="display: flex;">
+            <div id="report-modal" class="w-[900px] h-[90vh] rounded-2xl flex flex-col overflow-hidden relative border bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700 shadow-2xl">
+                <div class="p-5 border-b flex justify-between items-center shrink-0 bg-indigo-50 dark:bg-slate-800 dark:border-gray-700">
+                    <div class="flex items-center gap-4"><div class="w-10 h-10 rounded flex items-center justify-center font-bold text-xl bg-indigo-600 text-white dark:bg-gold-500 dark:text-black">W</div><div><h2 class="text-xl font-bold flex items-center gap-2 dark:text-white">{{ viewingScheme.isPreview ? '客户专享报告' : '归档报告详情' }}</h2><p class="text-xs font-mono mt-0.5 text-gray-500 dark:text-gray-400">客户: {{ viewingScheme.clientName }} | 日期: {{ viewingScheme.date.split(' ')[0] }}</p></div></div>
+                    <button @click="viewingScheme = null" class="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white text-2xl print:hidden">&times;</button>
+                </div>
+                <div class="flex-1 overflow-y-auto scroller p-8 bg-gray-50 dark:bg-[#0b1121]">
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="p-4 rounded-lg text-center shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><div class="text-[10px] uppercase tracking-wider mb-1 opacity-70 dark:text-gray-400">配置总资产</div><div class="text-2xl font-black font-mono dark:text-white">¥{{ (viewingScheme.total/10000).toFixed(2) }}<span class="text-sm font-normal opacity-70">万</span></div></div>
+                        <div class="p-4 rounded-lg text-center shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><div class="text-[10px] tracking-wider mb-1 opacity-70 dark:text-gray-400">预估费用</div><div class="text-xl font-bold font-mono text-orange-600 dark:text-gold-500">¥{{ viewingScheme.feeTotal.toLocaleString() }}</div></div>
+                        <div class="p-4 rounded-lg text-center shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><div class="text-[10px] tracking-wider mb-1 opacity-70 dark:text-gray-400">综合费率</div><div class="text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400">{{ viewingScheme.avgRate }}%</div></div>
+                        <div class="p-4 rounded-lg text-center shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><div class="text-[10px] tracking-wider mb-1 opacity-70 dark:text-gray-400">持仓数量</div><div class="text-xl font-bold font-mono dark:text-white">{{ viewingScheme.items.length }}</div></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 mb-8">
+                        <div class="p-5 rounded-xl shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><h4 class="font-bold mb-4 text-sm flex items-center gap-2 dark:text-white"><span class="w-1 h-4 bg-red-500 rounded"></span> 风险敞口分布</h4><div class="h-48 flex justify-center"><canvas id="chartRisk"></canvas></div></div>
+                        <div class="p-5 rounded-xl shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><h4 class="font-bold mb-4 text-sm flex items-center gap-2 dark:text-white"><span class="w-1 h-4 bg-blue-500 rounded"></span> 资产类型占比</h4><div class="h-48 flex justify-center"><canvas id="chartType"></canvas></div></div>
+                    </div>
+                    <div class="p-5 rounded-xl shadow-sm mb-8 bg-white dark:bg-slate-800 border dark:border-gray-700"><h4 class="font-bold mb-4 text-sm flex items-center gap-2 dark:text-white"><span class="w-1 h-4 bg-purple-500 rounded"></span> 核心赛道透视 (Top 5)</h4><div class="h-40"><canvas id="chartSector"></canvas></div></div>
+                    <div class="rounded-xl overflow-hidden shadow-sm bg-white dark:bg-slate-800 border dark:border-gray-700"><table class="w-full text-xs text-left"><thead class="font-mono border-b bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-gray-400 dark:border-gray-700"><tr><th class="p-3">资产名称</th><th class="p-3">代码</th><th class="p-3">配置权重</th><th class="p-3 text-right">预估市值</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="item in viewingScheme.items"><td class="p-3 font-bold dark:text-white">{{ item.name }}</td><td class="p-3 font-mono text-gray-500">{{ item.code }}</td><td class="p-3 font-bold text-indigo-600 dark:text-indigo-400">{{ item.allocPercent }}%</td><td class="p-3 text-right font-mono text-gray-800 dark:text-gold-500">¥{{ (viewingScheme.total * item.allocPercent/100).toLocaleString() }}</td></tr></tbody></table></div>
+                    <div class="mt-8 text-center text-[10px] text-gray-400 dark:text-gray-600"><p>本报告由财富配置系统自动生成</p><p>免责声明：市场有风险，投资需谨慎。本方案仅供参考。</p></div>
+                </div>
+                <div class="p-4 border-t flex justify-between gap-4 shrink-0 z-50 bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700"><button @click="downloadPDF" class="px-5 py-2 rounded font-bold flex items-center gap-2 text-sm bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-gray-600">🖨️ 导出 PDF</button><div v-if="viewingScheme.isPreview" class="flex gap-3"><button @click="viewingScheme = null" class="px-5 py-2 border rounded font-bold text-sm transition dark:text-white dark:border-gray-600">返回调整</button><button @click="confirmSave" class="px-6 py-2 text-white rounded shadow-lg font-bold flex items-center gap-2 text-sm bg-green-600 hover:bg-green-500 dark:bg-emerald-600 dark:hover:bg-emerald-500">✅ 确认归档</button></div></div>
+            </div>
         </div>
     </div>
 
-    <video id="webcam" autoplay playsinline muted></video>
+    <script id="game-code-template" type="text/plain">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Miner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"><\/script>
+    <style>
+        :root { --primary-gold: #FFD700; --dark-bg: #08080a; --glass-bg: rgba(30, 30, 40, 0.7); }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Lato', "Microsoft YaHei", sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; color: #eee; user-select: none; }
+        .glowing-box { position: relative; width: 100%; height: 100vh; padding: 0; background: linear-gradient(60deg, #FFD700, #FF4500, #FFFFFF, #FFD700, #DAA520); background-size: 400% 400%; animation: intenseFlow 3s linear infinite; }
+        @keyframes intenseFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        #inner-content { width: 100%; height: 100%; background: radial-gradient(circle at 50% 30%, #2b2b35, #0f0f12 90%); position: relative; overflow: hidden; }
+        #hud-left, #hud-right { position: absolute; top: 20px; height: 60px; background: var(--glass-bg); backdrop-filter: blur(10px); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 30px; display: flex; align-items: center; padding: 0 20px; z-index: 20; color: var(--primary-gold); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        #hud-left { left: 20px; gap: 20px; } #hud-right { right: 20px; gap: 12px; }
+        .hud-val { font-size: 22px; font-weight: bold; text-shadow: 0 0 5px rgba(255,215,0,0.5); }
+        .hud-label { font-size: 10px; color: #aaa; margin-top: 2px; text-align:center; display:block; }
+        .control-group { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--primary-gold); font-weight: bold; }
+        input[type=range] { -webkit-appearance: none; width: 70px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--primary-gold); cursor: pointer; }
+        .icon-btn { background: linear-gradient(135deg, #FFD700, #DAA520); border: none; color: #000; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .restart-btn { background: linear-gradient(135deg, #333, #111); color: #FFD700; border: 1px solid #FFD700; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; justify-content: center; align-items: center; }
+        #paper-note { width: 0; height: 60px; background: #fffaf0; border-radius: 8px; overflow: hidden; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; border: 3px solid #D4AF37; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #paper-note.open { width: 450px; height: 520px; } 
+        .note-content { opacity: 0; transition: opacity 0.5s 0.3s; padding: 35px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; box-sizing: border-box; }
+        #paper-note.open .note-content { opacity: 1; }
+        .note-text { color: #333; font-size: 22px; line-height: 1.6; font-weight: bold; }
+        .fund-card { border: 2px solid #D4AF37; padding: 20px; border-radius: 10px; background: rgba(255,215,0,0.1); width: 100%; text-align: center; }
+        .fund-code { font-family: monospace; color: #666; font-size: 16px; margin-bottom: 5px; }
+        .fund-name { font-size: 24px; color: #B8860B; font-weight: bold; margin-bottom: 15px; }
+        .fund-info { font-size: 14px; color: #888; background: #fff; padding: 5px 10px; border-radius: 20px; display: inline-block; }
+        .confirm-btn { padding: 12px 35px; background: linear-gradient(135deg, #FFD700, #DAA520); color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 16px; border-radius: 25px; margin-top: 20px; }
+        .pure-img { max-width: 100%; max-height: 350px; border: 3px solid white; box-shadow: 0 5px 20px rgba(0,0,0,0.3); border-radius: 4px; }
+        .note-img { max-width: 100%; max-height: 220px; border: 4px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin-bottom: 20px; border-radius: 4px; }
+        #collection-panel { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 80%; background: #15151a; border: 2px solid #D4AF37; z-index: 150; flex-direction: column; padding: 30px; border-radius: 15px; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
+        #collection-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 20px; }
+        .grid-item { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 8px; text-align: center; color: #ccc; font-size: 13px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .grid-item img { width: 100%; height: 100px; object-fit: cover; margin-bottom: 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="glowing-box">
+    <div id="inner-content">
+        <div id="hud-left"><div class="hud-item"><span class="hud-val" id="time-display">90</span><span class="hud-label">TIME</span></div><div class="hud-item" style="margin-left:20px"><span class="hud-val" id="score-display">0</span><span class="hud-label">WEALTH</span></div></div>
+        <div id="hud-right">
+            <div class="control-group"><span>🔢 QTY</span><input type="range" id="gold-slider" min="5" max="18" value="10"></div>
+            <div class="control-group"><span>⚡ SPD</span><input type="range" id="speed-slider" min="1" max="10" value="4"></div>
+            <button class="icon-btn restart-btn" onclick="resetGame()">🔄</button>
+            <button class="icon-btn" onclick="showCollection()">🎒</button>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="modal-overlay"><div id="paper-note"><div class="note-content" id="note-inner"></div></div></div>
+        <div id="collection-panel">
+            <h2 style="text-align:center; color:#D4AF37; font-family:'Cinzel', serif; margin-top:0;">My Treasures</h2>
+            <div id="collection-grid"></div>
+            <button class="confirm-btn" onclick="location.reload()" style="align-self:center; width:200px;">开始新一轮寻宝</button>
+        </div>
+    </div>
+</div>
+<script>
+    const myCowImageSrc = './niu.png'; 
+    // __INJECT_DATA_PLACEHOLDER__
+    const eggData = [{ type: 'firework', content: "🎉 恭喜你，获得彩蛋～～" }];
+    const userImagesData = [ { type: 'user-image', content: './user1.png' }, { type: 'user-image', content: './user2.png' }, { type: 'user-image', content: './user3.png' }, { type: 'user-image', content: './user4.png' }, { type: 'user-image', content: './user5.png' } ];
+    const blessingsData = [ { type: 'text', content: "祝你财运亨通，牛市长红！📈" }, { type: 'text', content: "愿你的资产像滚雪球一样越滚越大！💰" }, { type: 'text', content: "投资顺利，早日实现财富自由！🚀" }, { type: 'text', content: "心态平和，稳稳赚钱！✨" }, { type: 'text', content: "独具慧眼，百发百中！🎯" } ];
+    const knowledgeData = [ { type: 'knowledge', title: "场外ETF是什么？", paragraphs: ["场外ETF（联接基金）是指在银行、第三方平台购买的基金。", "它操作简便，门槛低，非常适合偏向定投的普通投资者。"] }, { type: 'knowledge', title: "为什么要做定投？", paragraphs: ["定投是通过在固定的时间以固定的金额投资，来平摊成本。", "这种方法能有效避免“追涨杀跌”，是长期投资的利器。"] } ];
+    
+    const canvas = document.getElementById('gameCanvas'); canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d'); const speedSlider = document.getElementById('speed-slider'); const goldSlider = document.getElementById('gold-slider');
+    const cowImg = new Image(); cowImg.src = myCowImageSrc;
+    let score = 0; let time = 90; let isGameOver = false; let inventory = []; let golds = []; let totalGolds = 10;
+    const minerX = canvas.width / 2; const minerY = 90; 
+    let hook = { x: minerX, y: minerY, angle: Math.PI/2, length: 50, state: 'swing', speed: 12, swingSpeed: 0.035, dir: 1, target: null };
 
-    <script type="module">
+    speedSlider.addEventListener('input', (e) => { hook.swingSpeed = parseInt(e.target.value) / 100; });
+    goldSlider.addEventListener('input', (e) => { totalGolds = parseInt(e.target.value); resetGame(); });
+
+    function resetGame() { score = 0; time = 90; isGameOver = false; inventory = []; golds = []; hook.state = 'swing'; hook.length = 50; hook.target = null; document.getElementById('score-display').innerText = score; document.getElementById('time-display').innerText = time; document.getElementById('collection-panel').style.display = 'none'; initGolds(); }
+    function shuffle(array) { let currentIndex = array.length, randomIndex; let arr = array.slice(); while (currentIndex != 0) { randomIndex = Math.floor(Math.random() * currentIndex); currentIndex--; [arr[currentIndex], arr[randomIndex]] = [arr[randomIndex], arr[currentIndex]]; } return arr; }
+    
+    function initGolds() {
+        let pool = [eggData[0]];
+        let remainingSlots = totalGolds - 1;
+        let shuffledFavorites = [];
+        if (typeof favoriteFundsData !== 'undefined' && Array.isArray(favoriteFundsData) && favoriteFundsData.length > 0) { shuffledFavorites = shuffle(favoriteFundsData); }
+        let shuffledImages = shuffle(userImagesData); let shuffledBlessings = shuffle(blessingsData); let shuffledKnowledge = shuffle(knowledgeData);
+        let queues = [shuffledFavorites, shuffledImages, shuffledBlessings, shuffledKnowledge];
+        let qIndex = 0;
+        while (remainingSlots > 0) {
+            if (shuffledFavorites.length === 0 && shuffledImages.length === 0 && shuffledBlessings.length === 0 && shuffledKnowledge.length === 0) { pool.push(blessingsData[Math.floor(Math.random()*blessingsData.length)]); remainingSlots--; continue; }
+            let currentQueue = queues[qIndex % queues.length];
+            if (currentQueue.length > 0) { pool.push(currentQueue.pop()); remainingSlots--; }
+            qIndex++;
+        }
+        for(let i=0; i < pool.length; i++) {
+            const data = pool[i]; const r = 25 + Math.random() * 35; const x = 80 + Math.random() * (canvas.width - 160); const y = 280 + Math.random() * (canvas.height - 350);
+            golds.push({ x: x, y: y, r: r, points: Math.floor(800 - r*10), data: data, caught: false, poly: Array.from({length: 8}, (_, k) => { const angle = (k/8) * Math.PI*2; return {x: Math.cos(angle)*r*(0.7+Math.random()*0.4), y: Math.sin(angle)*r*(0.7+Math.random()*0.4)}; }) });
+        }
+    }
+
+    function draw() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); ctx.moveTo(0, 130); ctx.lineTo(canvas.width, 130); ctx.strokeStyle = "rgba(255, 215, 0, 0.3)"; ctx.lineWidth = 2; ctx.stroke(); drawMiner(); drawGolds(); drawHook(); }
+    function drawMiner() { ctx.save(); ctx.translate(minerX, minerY - 35); if (cowImg.complete && cowImg.naturalHeight !== 0) { ctx.drawImage(cowImg, -40, -40, 80, 80); } else { ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); ctx.fillStyle = "#FFD700"; ctx.fill(); } ctx.restore(); }
+    function drawGolds() { golds.forEach(g => { if(!g.caught) { ctx.save(); ctx.translate(g.x, g.y); ctx.beginPath(); g.poly.forEach((p,i)=> i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y)); ctx.closePath(); const grad = ctx.createRadialGradient(-10, -10, 0, 0, 0, g.r); grad.addColorStop(0, "#FFFFFF"); grad.addColorStop(0.2, "#FFD700"); grad.addColorStop(1, "#B8860B"); ctx.fillStyle = grad; ctx.fill(); if(!isGameOver) { ctx.shadowColor = "#FFD700"; ctx.shadowBlur = 15 + Math.sin(Date.now()/200)*8; } ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth=1.5; ctx.stroke(); ctx.restore(); } }); }
+    function drawHook() { ctx.save(); ctx.translate(hook.x, hook.y); ctx.rotate(hook.angle); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(hook.length, 0); ctx.strokeStyle = "#aaa"; ctx.lineWidth = 3; ctx.stroke(); ctx.translate(hook.length, 0); ctx.fillStyle="#888"; ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.strokeStyle="#ddd"; ctx.lineWidth=4; ctx.lineCap="round"; ctx.moveTo(0,0); ctx.quadraticCurveTo(12,-15, 25,-8); ctx.stroke(); ctx.moveTo(0,0); ctx.quadraticCurveTo(12,15, 25,8); ctx.stroke(); if (hook.target) { const g = hook.target; ctx.save(); ctx.rotate(-hook.angle); ctx.translate(0, g.r + 5); ctx.beginPath(); ctx.arc(0,0,g.r*0.8, 0, Math.PI*2); ctx.fillStyle="#FFD700"; ctx.fill(); ctx.shadowColor="#FFD700"; ctx.shadowBlur=10; ctx.stroke(); ctx.restore(); } ctx.restore(); }
+    function loop() { if(!isGameOver) update(); draw(); requestAnimationFrame(loop); }
+    function update() { if (hook.state === 'swing') { hook.angle += hook.swingSpeed * hook.dir; if (hook.angle > Math.PI - 0.2 || hook.angle < 0.2) hook.dir *= -1; } else if (hook.state === 'shoot') { hook.length += hook.speed; if (hook.length > 900 || hook.x + Math.cos(hook.angle)*hook.length < 0 || hook.x + Math.cos(hook.angle)*hook.length > canvas.width || hook.y + Math.sin(hook.angle)*hook.length > canvas.height) { hook.state = 'pull'; } const tipX = hook.x + Math.cos(hook.angle) * hook.length; const tipY = hook.y + Math.sin(hook.angle) * hook.length; for(let g of golds) { if (!g.caught && Math.hypot(tipX - g.x, tipY - g.y) < g.r + 8) { hook.state = 'pull'; hook.target = g; g.caught = true; break; } } } else if (hook.state === 'pull') { hook.length -= hook.speed / (hook.target ? hook.target.r/18 : 1); if (hook.length <= 50) { hook.length = 50; hook.state = 'swing'; if(hook.target) { handleCatch(hook.target); hook.target = null; } } } }
+    document.addEventListener('keydown', (e) => { if(e.code==='Space') fire(); }); canvas.addEventListener('mousedown', fire);
+    function fire() { const overlay = document.getElementById('modal-overlay'); const panel = document.getElementById('collection-panel'); if (hook.state === 'swing' && !isGameOver && overlay.style.display !== 'flex' && panel.style.display !== 'flex') { hook.state = 'shoot'; } }
+
+    function handleCatch(gold) {
+        score += gold.points; document.getElementById('score-display').innerText = score; inventory.push(gold.data);
+        if (gold.data.type === 'firework') { triggerFirework(); score += 8888; document.getElementById('score-display').innerText = score; }
+        showNote(gold.data);
+    }
+    function triggerFirework() { var duration = 6000; var animationEnd = Date.now() + duration; var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999 }; var interval = setInterval(function() { var timeLeft = animationEnd - Date.now(); if (timeLeft <= 0) { return clearInterval(interval); } var particleCount = 50 * (timeLeft / duration); confetti(Object.assign({}, defaults, { particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } })); }, 250); }
+    function showNote(data) { const overlay = document.getElementById('modal-overlay'); const note = document.getElementById('paper-note'); const inner = document.getElementById('note-inner'); overlay.style.display = 'flex'; let html = ''; 
+        if (data.type === 'user-image') { html = \`<img src="\${data.content}" class="pure-img" onerror="this.style.display='none'">\`; } 
+        else if (data.type === 'image') { const descHtml = data.desc.replace(/\\n/g, '<br>'); html = \`<img src="\${data.content}" class="note-img"><div class="note-text">\${descHtml}</div>\`; } 
+        else if (data.type === 'fund') { html = \`<div class="fund-card"><div class="fund-code">\${data.code}</div><div class="fund-name">\${data.name}</div><div class="fund-info">\${data.info}</div><div style="margin-top:10px; font-size:12px; color:#aaa">⭐ 自选收藏</div></div>\`; }
+        else if (data.type === 'knowledge') { let pHtml = data.paragraphs.map(p => \`<p class="knowledge-p">\${p}</p>\`).join(''); html = \`<div class="knowledge-container"><h2 class="knowledge-title">\${data.title}</h2>\${pHtml}</div>\`; }
+        else { const contentHtml = data.content.replace(/\\n/g, '<br>'); html = \`<div class="note-text">\${contentHtml}</div>\`; }
+        html += \`<button class="confirm-btn" onclick="closeNote()">收入囊中</button>\`; inner.innerHTML = html; setTimeout(() => note.classList.add('open'), 50); 
+    }
+    function closeNote() { const overlay = document.getElementById('modal-overlay'); document.getElementById('paper-note').classList.remove('open'); setTimeout(() => overlay.style.display = 'none', 400); }
+    function showCollection() { isGameOver = true; document.getElementById('collection-panel').style.display = 'flex'; const grid = document.getElementById('collection-grid'); grid.innerHTML = ''; if(inventory.length === 0) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding-top:50px; color:#aaa;">暂无战利品...</div>'; } inventory.forEach(item => { const div = document.createElement('div'); div.className = 'grid-item'; if(item.type === 'firework') { div.style.border = "1px solid #FFD700"; div.style.background = "rgba(255,215,0,0.1)"; div.innerHTML = \`<div style="font-size:24px;margin-bottom:8px">🎉</div>\${item.content.substring(0,10)}...\`; } else if(item.type === 'fund') { div.innerHTML = \`<div style="color:#B8860B; font-weight:bold">\${item.name}</div><div style="font-size:10px">\${item.code}</div>\`; } else if(item.type === 'user-image') { div.innerHTML = \`<img src="\${item.content}"><span style="color:#D4AF37">美好回忆</span>\`; } else if(item.type === 'image') { div.innerHTML = \`<img src="\${item.content}">\${item.desc.substring(0,8)}...\`; } else if(item.type === 'knowledge') { div.innerHTML = \`<div style="font-size:24px;margin-bottom:8px;color:#D4AF37">📖</div>\${item.title}\`; } else { div.innerHTML = \`<div style="font-size:24px;margin-bottom:8px">📜</div>\${item.content.substring(0,8)}...\`; } grid.appendChild(div); }); }
+    const timerInt = setInterval(() => { if(!isGameOver) { time--; document.getElementById('time-display').innerText = time; if(time<=0) { clearInterval(timerInt); showCollection(); } } }, 1000);
+    resetGame(); loop();
+<\/script>
+</body>
+</html>
+    </script>
+
+    <script>
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 
-        // Shader 代码 (保持稳定版 v3.3)
-        const vertexShader = `
-            uniform float uTime; uniform float uMixFactor; uniform float uExplode; uniform float uAudioLevel;
-            attribute vec3 aTargetPos; attribute vec3 aOriginalColor; varying vec3 vColor;
-            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); } vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; } float snoise(vec3 v) { const vec2 C = vec2(1.0/6.0, 1.0/3.0) ; const vec4 D = vec4(0.0, 0.5, 1.0, 2.0); vec3 i = floor(v + dot(v, C.yyy) ); vec3 x0 = v - i + dot(i, C.xxx) ; vec3 g = step(x0.yzx, x0.xyz); vec3 l = 1.0 - g; vec3 i1 = min( g.xyz, l.zxy ); vec3 i2 = max( g.xyz, l.zxy ); vec3 x3 = x0 - D.yyy; i = mod289(i); vec4 p = permute( permute( permute( i.z + vec4(0.0, i1.z, i2.z, 1.0 )) + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) + i.x + vec4(0.0, i1.x, i2.x, 1.0 )); float n_ = 0.142857142857; vec3 ns = n_ * D.wyz - D.xzx; vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z); vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy; vec4 y = y_ *ns.x + ns.yyyy; vec4 h = 1.0 - abs(x) - abs(y); vec4 b0 = vec4( x.xy, y.xy ); vec4 b1 = vec4( x.zw, y.zw ); vec4 s0 = floor(b0)*2.0 + 1.0; vec4 s1 = floor(b1)*2.0 + 1.0; vec4 sh = -step(h, vec4(0.0)); vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ; vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ; vec3 p0 = vec3(a0.xy,h.x); vec3 p1 = vec3(a0.zw,h.y); vec3 p2 = vec3(a1.xy,h.z); vec3 p3 = vec3(a1.zw,h.w); vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3))); p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w; vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0); m = m * m; return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) ); }
-            void main() {
-                if (length(aOriginalColor) < 0.1) { vColor = vec3(0.0, 1.0, 0.8); } else { vColor = aOriginalColor; }
-                vec3 mixedPos = mix(position, aTargetPos, uMixFactor);
-                float noise = snoise(mixedPos * 0.1 + uTime * 0.5);
-                mixedPos += noise * 0.5;
-                mixedPos *= 1.0 + (uAudioLevel * 0.3 * noise);
-                vec3 dir = normalize(mixedPos);
-                mixedPos += dir * uExplode * 10.0;
-                vec4 mvPosition = modelViewMatrix * vec4(mixedPos, 1.0);
-                gl_Position = projectionMatrix * mvPosition;
-                gl_PointSize = (2.5 + uAudioLevel * 8.0) * (100.0 / -mvPosition.z);
-            }
-        `;
-        const fragmentShader = `varying vec3 vColor; void main() { float d = distance(gl_PointCoord, vec2(0.5)); if(d>0.5) discard; float strength = pow(1.0-(d*2.0), 3.0); gl_FragColor = vec4(vColor, strength); }`;
+        // 核心修复：恢复 v10.7 的 Vertex Shader (带 drift 漂浮效果)
+        const vShader=`uniform float uTime;uniform float uMix;uniform float uExplode;uniform float uSize;attribute vec3 aTarget;attribute vec3 aColor;attribute float aSize;varying vec3 vColor;float random(vec3 st){return fract(sin(dot(st.xyz,vec3(12.9898,78.233,45.5432)))*43758.5453123);}void main(){vColor=aColor;vec3 pos=mix(position,aTarget,uMix);float breathing=sin(pos.x*0.05+uTime*1.0)*cos(pos.z*0.05+uTime*1.0)*0.2;pos+=normal*breathing*(1.0-smoothstep(0.0,2.0,uExplode));vec3 dir=normalize(pos);vec3 randomDir=normalize(vec3(sin(aSize*12.0),cos(aSize*23.0),sin(aSize*34.0)));dir=normalize(mix(dir,randomDir,0.8));float maxDist=70.0;float dist=pow(uExplode,0.8)*20.0;pos+=dir*dist;vec4 mvPosition=modelViewMatrix*vec4(pos,1.0);gl_Position=projectionMatrix*mvPosition;float sizeBonus=smoothstep(0.0,4.0,uExplode)*3.0*(0.8+0.2*sin(uTime*5.0+aSize*10.0));gl_PointSize=(uSize*aSize+sizeBonus)*(300.0/-mvPosition.z);}`;
+        const fShader=`varying vec3 vColor;void main(){float d=distance(gl_PointCoord,vec2(0.5));if(d>0.5)discard;float strength=1.0-smoothstep(0.0,0.5,d);strength=pow(strength,2.0);gl_FragColor=vec4(vColor,strength);}`;
 
-        class ParticleApp {
-            constructor() {
-                this.container = document.body; 
-                // 【关键改动】降低默认粒子数以适应手机
-                this.particleCount = 15000; 
-                this.currentShape = 'sphere';
-                this.handOpenness = 1.0; this.audioLevel = 0;
-                this.initThree(); this.initParticles(); this.initMediaPipe();
-                this.animate = this.animate.bind(this); 
-                this.onWindowResize = this.onWindowResize.bind(this);
-                window.addEventListener('resize', this.onWindowResize); // 监听窗口变化
-                requestAnimationFrame(this.animate);
-            }
-            
-            // 【关键改动】添加窗口大小调整函数，适应手机横竖屏切换
-            onWindowResize() {
-                this.camera.aspect = window.innerWidth / window.innerHeight;
-                this.camera.updateProjectionMatrix();
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.composer.setSize(window.innerWidth, window.innerHeight);
-            }
+        class MagicSummer {
+            constructor(){this.count=35000;this.currentShape='heart';this.mixValue=1;this.isExploded=false;this.handInteraction={rotXSpeed:0,rotYSpeed:0,explodeCurrent:0};this.logoPoints=[];this.initialized=false;this.active=false;this.showSkeleton=false;}
+            init(){if(this.initialized)return;this.initThree();this.loadLogoData('logo.png');this.initialized=true;}
+            start(){document.getElementById('magic-overlay').classList.add('active');this.active=true;if(!this.initialized)this.init();this.animate();}
+            close(){document.getElementById('magic-overlay').classList.remove('active');this.active=false;}
+            loadLogoData(url){const img=new Image();img.crossOrigin="Anonymous";img.onload=()=>{const canvas=document.getElementById('logoCanvas');const ctx=canvas.getContext('2d');let w=img.width,h=img.height;const max=200;if(w>h){h*=max/w;w=max;}else{w*=max/h;h=max;}canvas.width=w;canvas.height=h;ctx.drawImage(img,0,0,w,h);const data=ctx.getImageData(0,0,w,h).data;this.logoPoints=[];for(let y=0;y<h;y+=2){for(let x=0;x<w;x+=2){const i=(y*w+x)*4;if(data[i+3]>128){this.logoPoints.push({x:(x-w/2)*0.5,y:-(y-h/2)*0.5,z:(Math.random()-0.5)*5.0,c:new THREE.Color(data[i]/255,data[i+1]/255,data[i+2]/255)});}}}document.getElementById('magic-loading').style.display='none';this.initParticles();this.initMediaPipe();};img.onerror=()=>{document.getElementById('magic-loading').style.display='none';this.initParticles();this.initMediaPipe();}img.src=url;}
+            initThree(){this.scene=new THREE.Scene();this.scene.fog=new THREE.FogExp2(0x1a1a2e,0.015);this.camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,2000);this.camera.position.set(0,0,120);this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});this.renderer.setSize(window.innerWidth,window.innerHeight);this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));document.getElementById('magic-scene-container').appendChild(this.renderer.domElement);this.controls=new OrbitControls(this.camera,this.renderer.domElement);this.controls.enableDamping=true;this.controls.autoRotate=false;this.controls.enableZoom=false;this.clock=new THREE.Clock();}
+            initParticles(){this.geometry=new THREE.BufferGeometry();const pos=new Float32Array(this.count*3);const tar=new Float32Array(this.count*3);const col=new Float32Array(this.count*3);const siz=new Float32Array(this.count);for(let i=0;i<this.count;i++){pos[i*3]=(Math.random()-0.5)*300;pos[i*3+1]=(Math.random()-0.5)*300;pos[i*3+2]=(Math.random()-0.5)*300;siz[i]=Math.random()*0.6+0.4;}this.geometry.setAttribute('position',new THREE.BufferAttribute(pos,3));this.geometry.setAttribute('aTarget',new THREE.BufferAttribute(tar,3));this.geometry.setAttribute('aColor',new THREE.BufferAttribute(col,3));this.geometry.setAttribute('aSize',new THREE.BufferAttribute(siz,1));this.material=new THREE.ShaderMaterial({vertexShader:vShader,fragmentShader:fShader,uniforms:{uTime:{value:0},uMix:{value:0},uExplode:{value:0},uSize:{value:4.0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});this.points=new THREE.Points(this.geometry,this.material);this.group=new THREE.Group();this.group.add(this.points);this.scene.add(this.group);this.generateTargetData('heart');this.geometry.attributes.position.array.set(this.geometry.attributes.aTarget.array);this.geometry.attributes.position.needsUpdate=true;this.material.uniforms.uMix.value=1;}
+            generateTargetData(type){const tar=this.geometry.attributes.aTarget.array;const col=this.geometry.attributes.aColor.array;const c=new THREE.Color();for(let i=0;i<this.count;i++){let x,y,z;const r=i/this.count;switch(type){case 'heart':c.setHSL((r*1.5)%1.0,1.0,0.6);let u=Math.random()*Math.PI*2,v=Math.random()*Math.PI;x=16*Math.pow(Math.sin(u),3)*Math.sin(v);y=(13*Math.cos(u)-5*Math.cos(2*u)-2*Math.cos(3*u)-Math.cos(4*u))*Math.sin(v);z=6*Math.cos(v);const ro=1+(Math.random()-0.5)*0.25;x*=ro*2.0;y*=ro*2.0;z*=ro*2.0;y+=5;break;case 'logo':if(this.logoPoints.length>0){const p=this.logoPoints[i%this.logoPoints.length];x=p.x+(Math.random()-0.5)*1.5;y=p.y+(Math.random()-0.5)*1.5;z=p.z+(Math.random()-0.5)*1.5;c.copy(p.c);}else{x=(Math.random()-0.5)*50;y=(Math.random()-0.5)*50;z=(Math.random()-0.5)*50;c.setHex(0xffffff);}break;case 'planet':c.setHSL(0.6+r*0.3,0.9,0.6);let rp=35,vp=Math.acos(2*Math.random()-1),up=Math.random()*Math.PI*2;x=rp*Math.sin(vp)*Math.cos(up);y=rp*Math.sin(vp)*Math.sin(up);z=rp*Math.cos(vp);if(Math.random()>0.8){rp*=1.4+Math.random();x=rp*Math.cos(up);z=rp*Math.sin(up);y=(Math.random()-0.5)*3;c.setHSL(r,0.5,0.8);}break;}tar[i*3]=x;tar[i*3+1]=y;tar[i*3+2]=z;col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;}this.geometry.attributes.aTarget.needsUpdate=true;this.geometry.attributes.aColor.needsUpdate=true;}
+            switchShape(t){if(this.currentShape===t)return;this.currentShape=t;this.generateTargetData(t);this.mixValue=0;if(this.isExploded){this.isExploded=false;this.updateUI();}document.querySelectorAll('.magic-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
+            toggleMagic(){this.isExploded=!this.isExploded;this.updateUI();}
+            toggleSkeleton(){this.showSkeleton=!this.showSkeleton;document.getElementById('skeleton-btn').classList.toggle('active',this.showSkeleton);}
+            updateUI(){const btn=document.getElementById('magic-main-btn');const txt=document.getElementById('magic-text');if(this.isExploded){btn.innerText="收回";txt.classList.add('visible');}else{btn.innerText="释放星辰";txt.classList.remove('visible');}}
+            async initMediaPipe(){try{const v=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");this.hl=await HandLandmarker.createFromOptions(v,{baseOptions:{modelAssetPath:`https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,delegate:"GPU"},runningMode:"VIDEO",numHands:1});const vid=document.getElementById('webcam');navigator.mediaDevices.getUserMedia({video:true}).then(s=>{vid.srcObject=s;vid.addEventListener('loadeddata',()=>{this.loop();});});}catch(e){console.error(e);}}
+            drawLandmarks(ctx,landmarks){ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);ctx.lineWidth=2;const connections=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];const w=ctx.canvas.width;const h=ctx.canvas.height;ctx.strokeStyle='#00ff00';connections.forEach(([i,j])=>{const p1=landmarks[i];const p2=landmarks[j];ctx.moveTo(p1.x*w,p1.y*h);ctx.lineTo(p2.x*w,p2.y*h);ctx.stroke();});ctx.fillStyle='#ff0000';landmarks.forEach(p=>{ctx.beginPath();ctx.arc(p.x*w,p.y*h,3,0,2*Math.PI);ctx.fill();});}
+            loop(){if(!this.active){requestAnimationFrame(this.loop.bind(this));return;}const vid=document.getElementById('webcam');if(vid.currentTime>0){const res=this.hl.detectForVideo(vid,performance.now());const canvas=document.getElementById('skeleton-canvas');const ctx=canvas.getContext('2d');if(canvas.width!==vid.videoWidth){canvas.width=vid.videoWidth;canvas.height=vid.videoHeight;}if(res.landmarks.length>0){const lm=res.landmarks[0];if(this.showSkeleton)this.drawLandmarks(ctx,lm);else ctx.clearRect(0,0,canvas.width,canvas.height);const hx=lm[9].x,hy=lm[9].y;this.handInteraction.rotYSpeed+=((hx-0.5)*2.5-this.handInteraction.rotYSpeed)*0.1;this.handInteraction.rotXSpeed+=((hy-0.5)*2.5-this.handInteraction.rotXSpeed)*0.1;const od=Math.sqrt(Math.pow(lm[4].x-lm[20].x,2)+Math.pow(lm[4].y-lm[20].y,2));const pd=Math.sqrt(Math.pow(lm[4].x-lm[8].x,2)+Math.pow(lm[4].y-lm[8].y,2));let ns=this.isExploded;if(od>0.45&&!this.isExploded)ns=true;else if(pd<0.08&&this.isExploded)ns=false;if(ns!==this.isExploded){this.isExploded=ns;this.updateUI();}document.getElementById('magic-status').innerText=`手势控制中 | 张开:${od.toFixed(2)}`;}else{this.handInteraction.rotXSpeed*=0.95;this.handInteraction.rotYSpeed*=0.95;document.getElementById('magic-status').innerText=`未检测到手势...`;ctx.clearRect(0,0,canvas.width,canvas.height);}}requestAnimationFrame(this.loop.bind(this));}
+            animate(){if(!this.active)return;requestAnimationFrame(this.animate.bind(this));const dt=this.clock.getDelta();const t=this.clock.getElapsedTime();this.material.uniforms.uTime.value=t;if(this.mixValue<1){this.mixValue+=dt*0.5;this.material.uniforms.uMix.value=Math.min(this.mixValue,1);}this.group.rotation.y+=dt*(0.05+this.handInteraction.rotYSpeed*1.5);this.group.rotation.x+=dt*(this.handInteraction.rotXSpeed*1.5);const te=this.isExploded?5.0:0.0;this.handInteraction.explodeCurrent+=(te-this.handInteraction.explodeCurrent)*0.03;this.material.uniforms.uExplode.value=this.handInteraction.explodeCurrent;this.controls.update();this.renderer.render(this.scene,this.camera);}
+        }
+        
+        // 全局实例
+        const magicApp = new MagicSummer();
+        window.app = { launchMagic: () => magicApp.start(), closeMagic: () => magicApp.close(), switchShape: (t) => magicApp.switchShape(t), toggleMagic: () => magicApp.toggleMagic(), toggleSkeleton: () => magicApp.toggleSkeleton() };
 
-            initThree() {
-                this.scene = new THREE.Scene();
-                this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-                this.camera.position.z = 30;
-                this.renderer = new THREE.WebGLRenderer({ antialias: false });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.container.appendChild(this.renderer.domElement);
-                // OrbitControls 默认支持鼠标和触摸（手指拖动），这是兼容手机的关键
-                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-                this.controls.enableDamping = true; this.controls.autoRotate = false;
-                this.composer = new EffectComposer(this.renderer);
-                this.composer.addPass(new RenderPass(this.scene, this.camera));
-                this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.4, 0.6));
-            }
+        // Vue App Logic
+        const { createApp, ref, computed, watch, nextTick, onMounted } = Vue;
+        Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
 
-            initParticles() {
-                this.geometry = new THREE.BufferGeometry(); this.updateParticleCount(this.particleCount);
-                this.material = new THREE.ShaderMaterial({
-                    vertexShader, fragmentShader,
-                    uniforms: { uTime: { value: 0 }, uMixFactor: { value: 0 }, uExplode: { value: 0 }, uAudioLevel: { value: 0 } },
-                    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+        createApp({
+            setup() {
+                const isDark = ref(localStorage.getItem('theme') === 'dark');
+                const currentTab = ref('client'); 
+                const clientName = ref('');
+                const viewingScheme = ref(null);
+                const batchJson = ref('');
+                
+                const sortKey = ref(''); const sortOrder = ref(1);
+                const filterText = ref(''); const filterType = ref('全部');
+
+                const toggleTheme = () => { isDark.value = !isDark.value; applyTheme(); };
+                const applyTheme = () => {
+                    const html = document.documentElement;
+                    const reportModal = document.getElementById('report-modal');
+                    if(isDark.value) { 
+                        html.classList.add('dark'); html.classList.remove('light'); localStorage.setItem('theme', 'dark'); 
+                        Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
+                        if(reportModal) reportModal.style.background = '#0f172a';
+                    } else { 
+                        html.classList.remove('dark'); html.classList.add('light'); localStorage.setItem('theme', 'light'); 
+                        Chart.defaults.color = '#475569'; Chart.defaults.borderColor = '#e2e8f0';
+                        if(reportModal) reportModal.style.background = '#ffffff';
+                    }
+                };
+                onMounted(() => applyTheme());
+
+                // 20只基金完整列表 (恢复)
+                const demoFunds = [
+                    { code: '201991', name: '华夏瑞益混合 A', type: '混合型', sector: '多元配置', risk: 'R3-中风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2025-05', scale: '0', isHot: false, isFavorite: false },
+                    { code: '013969', name: '华夏永利一年持有 A', type: '混合型', sector: '固定收益+', risk: 'R2-中低风险', purchaseFee: 1.5, redemptionFee: 0, manager: '-', foundDate: '2020+', scale: '10', isHot: false, isFavorite: false },
+                    { code: '008887', name: '华夏国证半导体 ETF联接 A', type: '指数型', sector: '半导体芯片', risk: 'R4-中高风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2020', scale: '30', isHot: true, isFavorite: false },
+                    { code: '014517', name: '华夏30天滚动短债 A', type: '债券型', sector: '短期债券', risk: 'R2-中低风险', purchaseFee: 0, redemptionFee: 0, manager: '-', foundDate: '2021+', scale: '50', isHot: false, isFavorite: false },
+                    { code: '001063', name: '华夏收益债券(QDII) C', type: '债券型', sector: '全球债券', risk: 'R2-中低风险', purchaseFee: 0, redemptionFee: 0.5, manager: '-', foundDate: '2015', scale: '10', isHot: false, isFavorite: false },
+                    { code: '012208', name: '华夏港股前沿经济混合 A', type: '混合型', sector: '港股科技', risk: 'R4-中高风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2020+', scale: '15', isHot: false, isFavorite: false },
+                    { code: '000948', name: '华夏沪港通恒生 ETF联接 A', type: '指数型', sector: '港股蓝筹', risk: 'R3-中风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2015', scale: '50', isHot: false, isFavorite: false },
+                    { code: '001374', name: '华夏现金增利货币 B', type: '货币型', sector: '货币市场', risk: 'R1-低风险', purchaseFee: 0, redemptionFee: 0, manager: '-', foundDate: '2015', scale: '30', isHot: false, isFavorite: false },
+                    { code: '018177', name: '华夏科创50指数增强 A', type: '指数型', sector: '科创板', risk: 'R5-高风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2022+', scale: '12', isHot: true, isFavorite: false },
+                    { code: '008298', name: '华夏中证银行 ETF联接 A', type: '指数型', sector: '银行', risk: 'R3-中风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2020', scale: '25', isHot: false, isFavorite: false },
+                    { code: '000945', name: '华夏医疗健康混合 A', type: '混合型', sector: '医药生物', risk: 'R4-中高风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2015', scale: '20', isHot: false, isFavorite: false },
+                    { code: '007592', name: '华夏价值精选混合', type: '混合型', sector: '大盘价值', risk: 'R3-中风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2019', scale: '15', isHot: false, isFavorite: false },
+                    { code: '002001', name: '华夏回报混合 A', type: '混合型', sector: '稳健回报', risk: 'R3-中风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2003', scale: '35', isHot: true, isFavorite: true },
+                    { code: '002011', name: '华夏红利混合', type: '混合型', sector: '高股息', risk: 'R3-中风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2005', scale: '25', isHot: true, isFavorite: false },
+                    { code: '012768', name: '华夏中证动漫游戏 ETF联接 A', type: '指数型', sector: '动漫游戏', risk: 'R5-高风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2021+', scale: '10', isHot: true, isFavorite: false },
+                    { code: '013395', name: '华夏新能源车龙头混合 A', type: '混合型', sector: '新能源车', risk: 'R5-高风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2021+', scale: '20', isHot: true, isFavorite: false },
+                    { code: '015644', name: '华夏中证同业存单AAA指数', type: '债券型', sector: '同业存单', risk: 'R1-低风险', purchaseFee: 0, redemptionFee: 0, manager: '-', foundDate: '2022+', scale: '100', isHot: false, isFavorite: false },
+                    { code: '008585', name: '华夏中证人工智能 ETF联接 A', type: '指数型', sector: '人工智能', risk: 'R5-高风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2020', scale: '30', isHot: true, isFavorite: false },
+                    { code: '013125', name: '华夏食品饮料 ETF联接 A', type: '指数型', sector: '食品饮料', risk: 'R4-中高风险', purchaseFee: 1.0, redemptionFee: 0.5, manager: '-', foundDate: '2021+', scale: '20', isHot: false, isFavorite: false },
+                    { code: '012428', name: '华夏核心制造混合 A', type: '混合型', sector: '高端制造', risk: 'R4-中高风险', purchaseFee: 1.5, redemptionFee: 0.5, manager: '-', foundDate: '2021+', scale: '15', isHot: false, isFavorite: false }
+                ];
+
+                const migrateData = (data) => {
+                    if (!Array.isArray(data)) return [];
+                    return data.map(f => ({
+                        ...f,
+                        purchaseFee: f.purchaseFee !== undefined ? Number(f.purchaseFee) : (Number(f.fee) || 0),
+                        redemptionFee: f.redemptionFee !== undefined ? Number(f.redemptionFee) : 0,
+                        manager: '-', scale: f.scale || '-', foundDate: f.foundDate || '-', sector: f.sector || '-',
+                        isFavorite: f.isFavorite || false
+                    }));
+                };
+
+                const funds = ref(migrateData(JSON.parse(localStorage.getItem('myFunds')) || demoFunds));
+                const savedSchemes = ref(JSON.parse(localStorage.getItem('mySchemes')) || []);
+                const newFund = ref({ code: '', name: '', type: '混合型', sector: '', risk: 'R3-中风险', purchaseFee: 1.5, redemptionFee: 0.5, manager:'-', foundDate:'', scale:'', isHot: false });
+                const clientTotal = ref(1000000);
+                const selectedFunds = ref([]);
+                const editingFund = ref(null); const editingFundData = ref({});
+                let charts = {};
+
+                watch(funds, (n) => localStorage.setItem('myFunds', JSON.stringify(n)), { deep: true });
+                watch(savedSchemes, (n) => localStorage.setItem('mySchemes', JSON.stringify(n)), { deep: true });
+
+                const resetData = () => { if(confirm('重置数据？(包括清空经理信息)')) { funds.value = demoFunds; savedSchemes.value = []; localStorage.removeItem('myFunds'); localStorage.removeItem('mySchemes'); } };
+                const addFund = () => { if(!newFund.value.code) return; funds.value.unshift({...newFund.value}); alert("添加成功"); };
+                const deleteScheme = (idx) => { if(confirm('删除此方案？')) savedSchemes.value.splice(idx, 1); };
+
+                const toggleSort = (key) => { if (sortKey.value === key) sortOrder.value *= -1; else { sortKey.value = key; sortOrder.value = 1; } };
+                const sortIcon = (key) => { if (sortKey.value !== key) return '↕'; return sortOrder.value === 1 ? '↑' : '↓'; };
+                const sortedFundsList = computed(() => {
+                    const list = [...funds.value]; if (!sortKey.value) return list;
+                    return list.sort((a, b) => {
+                        let valA = a[sortKey.value], valB = b[sortKey.value];
+                        if (sortKey.value === 'purchaseFee') { valA = parseFloat(valA); valB = parseFloat(valB); }
+                        if (sortKey.value === 'isFavorite') { valA = valA ? 1 : 0; valB = valB ? 1 : 0; }
+                        if (valA < valB) return -1 * sortOrder.value; if (valA > valB) return 1 * sortOrder.value; return 0;
+                    });
                 });
-                this.points = new THREE.Points(this.geometry, this.material); this.scene.add(this.points);
-                this.targets = { sphere: this.generateSphere(this.particleCount), cube: this.generateCube(this.particleCount) };
-                this.setShape('sphere');
-            }
 
-            updateParticleCount(count) {
-                const p = new Float32Array(count * 3); const t = new Float32Array(count * 3); const c = new Float32Array(count * 3);
-                for (let i = 0; i < count; i++) {
-                    p[i*3]=(Math.random()-0.5)*50; p[i*3+1]=(Math.random()-0.5)*50; p[i*3+2]=(Math.random()-0.5)*50;
-                    c[i*3]=0;
-                }
-                this.geometry.setAttribute('position', new THREE.BufferAttribute(p, 3));
-                this.geometry.setAttribute('aTargetPos', new THREE.BufferAttribute(t, 3));
-                this.geometry.setAttribute('aOriginalColor', new THREE.BufferAttribute(c, 3));
-            }
+                const filteredFunds = computed(() => funds.value.filter(f => (!filterText.value || f.name.includes(filterText.value) || f.code.includes(filterText.value)) && (filterType.value === '全部' || f.type === filterType.value)));
 
-            generateText() {
-                const input = document.getElementById('user-text');
-                const text = input.value.trim();
-                if(!text) return;
+                const toggleFavorite = (f) => { f.isFavorite = !f.isFavorite; };
+                const isSelected = (f) => selectedFunds.value.some(i => i.code === f.code);
+                const toggleSelect = (f) => { isSelected(f) ? selectedFunds.value = selectedFunds.value.filter(i => i.code !== f.code) : selectedFunds.value.push({ ...f, allocPercent: 0 }); };
+                const openEditModal = (f) => { editingFund.value = f; editingFundData.value = JSON.parse(JSON.stringify(f)); };
+                const saveFundEdit = () => { const idx = funds.value.findIndex(f => f.code === editingFund.value.code); if(idx !== -1) funds.value[idx] = {...editingFundData.value}; editingFund.value = null; };
 
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 400; canvas.height = 200; 
-                
-                ctx.fillStyle = 'black'; ctx.fillRect(0,0,400,200);
-                ctx.fillStyle = '#ff0055'; 
-                ctx.font = 'bold 120px Arial';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(text, 200, 100);
-
-                const data = ctx.getImageData(0,0,400,200).data;
-                const pts = [];
-                for(let i=0; i<data.length; i+=4) {
-                    if(data[i] > 50) { 
-                        pts.push({ x: (i/4)%400, y: Math.floor((i/4)/400) });
+                const autoAllocate = (strategy) => {
+                    const list = selectedFunds.value; const count = list.length; if(count === 0) return alert("请先勾选基金");
+                    if(strategy === 'avg') { const per = Math.floor(100/count); const rem = 100 - per*count; list.forEach((f,i) => f.allocPercent = per + (i<rem?1:0)); } 
+                    else {
+                        const getRiskScore = (risk) => { if(risk.includes('R5')) return 5; if(risk.includes('R4')) return 4; if(risk.includes('R3')) return 3; if(risk.includes('R2')) return 2; return 1; };
+                        let totalWeight = 0; const weights = list.map(f => { let s = getRiskScore(f.risk); if(strategy === 'conservative') s = 6 - s; return s; });
+                        totalWeight = weights.reduce((a,b)=>a+b, 0); let currentTotal = 0;
+                        list.forEach((f, i) => { if(i === count-1) f.allocPercent = 100 - currentTotal; else { const p = Math.round((weights[i] / totalWeight) * 100); f.allocPercent = p; currentTotal += p; } });
                     }
-                }
+                };
 
-                if(pts.length === 0) { alert("文字太细或太小，无法生成粒子"); return; }
-
-                const td = new Float32Array(this.particleCount*3);
-                const cd = this.geometry.attributes.aOriginalColor.array;
+                const calcFee = (f) => {
+                    const rate = f.purchaseFee !== undefined ? Number(f.purchaseFee) : (Number(f.fee) || 0);
+                    return Math.round((clientTotal.value * (f.allocPercent||0)/100) * (rate/100));
+                };
                 
-                for(let i=0; i<this.particleCount; i++) {
-                    const p = pts[i % pts.length];
-                    const scale = 0.1; 
-                    td[i*3] = (p.x - 200) * scale;
-                    td[i*3+1] = -(p.y - 100) * scale;
-                    td[i*3+2] = 0;
-                    cd[i*3] = 1.0; cd[i*3+1] = 0.0; cd[i*3+2] = 0.5;
-                }
-                this.geometry.attributes.aOriginalColor.needsUpdate = true;
-                this.targets['text'] = td;
-                this.setShape('text');
-                
-                document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            }
+                const totalPercent = computed(() => selectedFunds.value.reduce((a,c) => a+(c.allocPercent||0),0));
+                const totalFee = computed(() => selectedFunds.value.reduce((a,c) => a+calcFee(c),0));
+                const avgFeeRate = computed(() => (clientTotal.value && totalFee.value) ? ((totalFee.value/clientTotal.value)*100).toFixed(2) : 0);
+                const riskColor = (r) => { if(r.includes('R5')) return 'bg-red-500/20 text-red-400 border border-red-500/30'; if(r.includes('R4')) return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'; if(r.includes('R3')) return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'; return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'; };
 
-            loadLogo(url) {
-                const img = new Image(); img.src = url; img.crossOrigin = "Anonymous";
-                img.onload = () => {
-                    const c = document.createElement('canvas'); const ctx = c.getContext('2d');
-                    let w = img.width, h = img.height; const max=250; if(w>max){h=Math.round(h*(max/w));w=max;}
-                    c.width=w; c.height=h; ctx.drawImage(img,0,0,w,h);
-                    const d = ctx.getImageData(0,0,w,h).data; const pts = [];
-                    for(let i=0;i<d.length;i+=4) { if(!(d[i]>220&&d[i+1]>220&&d[i+2]>220)) pts.push({x:i/4%w, y:Math.floor(i/4/w), c:[d[i]/255,d[i+1]/255,d[i+2]/255]}); }
-                    const td = new Float32Array(this.particleCount*3); const cd = this.geometry.attributes.aOriginalColor.array;
-                    for(let i=0;i<this.particleCount;i++) {
-                        const p = pts[i%pts.length]; const s=16.0;
-                        td[i*3]=(p.x/w-0.5)*s; td[i*3+1]=-(p.y/h-0.5)*s*(h/w); td[i*3+2]=0;
-                        cd[i*3]=p.c[0]; cd[i*3+1]=p.c[1]; cd[i*3+2]=p.c[2];
-                    }
-                    this.geometry.attributes.aOriginalColor.needsUpdate = true;
-                    this.targets['logo'] = td; this.setShape('logo');
-                    document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                    document.getElementById('btn-logo').classList.add('active');
+                const generatePreview = () => { 
+                    if(!clientName.value) return alert("请输入客户姓名"); 
+                    if(totalPercent.value !== 100 && !confirm("未满100%，确定预览？")) return; 
+                    const itemsSafe = selectedFunds.value.map(f => ({ ...f, allocPercent: f.allocPercent || 0, purchaseFee: f.purchaseFee !== undefined ? f.purchaseFee : (f.fee || 0) }));
+                    openSchemeModal({ id: Date.now(), clientName: clientName.value, date: new Date().toLocaleString(), total: clientTotal.value, feeTotal: totalFee.value, avgRate: avgFeeRate.value, items: itemsSafe, isPreview: true });
+                };
+
+                const confirmSave = () => { const final = JSON.parse(JSON.stringify(viewingScheme.value)); delete final.isPreview; savedSchemes.value.unshift(final); viewingScheme.value = null; alert("✅ 方案已归档"); };
+                const viewHistory = (s) => openSchemeModal({ ...s, isPreview: false });
+
+                const openSchemeModal = (s) => {
+                    viewingScheme.value = s;
+                    nextTick(() => {
+                        setTimeout(() => {
+                            try {
+                                if(!document.getElementById('chartRisk')) return;
+                                const riskMap = {'高风险':0,'中风险':0,'低风险':0}; const typeMap={}; const sectorMap={};
+                                s.items.forEach(i => {
+                                    const amt = s.total*(i.allocPercent/100);
+                                    if(i.risk.includes('R5')||i.risk.includes('R4')) riskMap['高风险']+=amt; else if(i.risk.includes('R3')) riskMap['中风险']+=amt; else riskMap['低风险']+=amt;
+                                    typeMap[i.type]=(typeMap[i.type]||0)+amt; const sec = i.sector || '其他'; sectorMap[sec]=(sectorMap[sec]||0)+amt;
+                                });
+                                if(charts.r) charts.r.destroy(); if(charts.t) charts.t.destroy(); if(charts.s) charts.s.destroy();
+                                const bgColors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+                                const ctxR = document.getElementById('chartRisk'); const ctxT = document.getElementById('chartType'); const ctxS = document.getElementById('chartSector');
+                                if(ctxR) charts.r = new Chart(ctxR, { type: 'doughnut', data: { labels: Object.keys(riskMap), datasets: [{ data: Object.values(riskMap), backgroundColor: ['#ef4444', '#f59e0b', '#10b981'], borderWidth:0 }] }, options: { plugins: { legend: { position: 'right' } }, responsive: true, maintainAspectRatio: false } });
+                                if(ctxT) charts.t = new Chart(ctxT, { type: 'pie', data: { labels: Object.keys(typeMap), datasets: [{ data: Object.values(typeMap), backgroundColor: bgColors, borderWidth:0 }] }, options: { plugins: { legend: { position: 'right' } }, responsive: true, maintainAspectRatio: false } });
+                                if(ctxS) charts.s = new Chart(ctxS, { type: 'bar', data: { labels: Object.keys(sectorMap), datasets: [{ label: '投资金额', data: Object.values(sectorMap), backgroundColor: '#6366f1', borderRadius: 4 }] }, options: { indexAxis: 'y', maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { grid: { display: false } } } } });
+                            } catch(e) { console.error("Chart Error:", e); }
+                        }, 200);
+                    });
+                };
+
+                const downloadPDF = () => {
+                    const el = document.getElementById('report-modal'); const btnPanel = el.querySelector('.border-t');
+                    const originalDisplay = btnPanel.style.display; btnPanel.style.display = 'none';
+                    const bg = isDark.value ? '#0f172a' : '#ffffff';
+                    html2canvas(el, { scale: 2, useCORS: true, backgroundColor: bg }).then(canvas => {
+                        btnPanel.style.display = originalDisplay;
+                        const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf; const pdf = new jsPDF('p', 'mm', 'a4');
+                        const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                        pdf.save(`财富配置报告_${viewingScheme.value.clientName}.pdf`);
+                    });
+                };
+
+                const switchGameTab = () => {
+                    currentTab.value = 'treasure';
+                    nextTick(() => {
+                        const frame = document.getElementById('game-frame');
+                        const rawHtml = document.getElementById('game-code-template').textContent;
+                        const userFavorites = funds.value.filter(f => f.isFavorite).map(f => ({
+                            type: 'fund',
+                            name: f.name,
+                            code: f.code,
+                            info: `${f.type} | ${f.sector || '综合'}`,
+                            desc: '我的自选基金'
+                        }));
+                        const finalHtml = rawHtml.replace('// __INJECT_DATA_PLACEHOLDER__', `const favoriteFundsData = ${JSON.stringify(userFavorites)};`);
+                        frame.srcdoc = finalHtml;
+                    });
+                };
+
+                const downloadTemplate = () => { const tpl = [{"code":"001","name":"示例","type":"混合型","risk":"R3","purchaseFee":1.5,"redemptionFee":0.5,"manager":"王","scale":"10","sector":"科技"}]; const b = new Blob([JSON.stringify(tpl,null,2)],{type:"application/json"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download="template.json"; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+                const exportData = () => { const b = new Blob([JSON.stringify(funds.value,null,2)],{type:"application/json"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download="all_funds.json"; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+                const batchImport = () => { try { const arr = JSON.parse(batchJson.value); if(Array.isArray(arr)) { funds.value = [...migrateData(arr), ...funds.value]; alert("导入成功"); batchJson.value=''; } } catch(e) { alert("JSON格式错误"); } };
+
+                return {
+                    isDark, toggleTheme, currentTab, funds, newFund, clientName, clientTotal, selectedFunds,
+                    isSelected, toggleSelect, riskColor, totalPercent, totalFee, savedSchemes, viewingScheme, editingFund, editingFundData, batchJson, showMagic,
+                    openEditModal, saveFundEdit, resetData, addFund, deleteScheme, sortKey, toggleSort, sortIcon, sortedFundsList, filterText, filterType, filteredFunds,
+                    autoAllocate, generatePreview, confirmSave, viewHistory, downloadTemplate, exportData, batchImport, downloadPDF,
+                    launchMagic: () => window.app.launchMagic(),
+                    switchGameTab, toggleFavorite 
                 };
             }
-
-            setShape(shape) {
-                this.currentShape = shape; const t = this.targets[shape]; const attr = this.geometry.attributes.aTargetPos;
-                if(shape!=='logo' && shape!=='text') { 
-                    const c = this.geometry.attributes.aOriginalColor.array; 
-                    for(let i=0;i<c.length;i++) c[i]=0; 
-                    this.geometry.attributes.aOriginalColor.needsUpdate = true; 
-                }
-                for(let i=0;i<t.length;i++) attr.array[i] = t[i];
-                attr.needsUpdate = true; this.material.uniforms.uMixFactor.value = 0;
-
-                // 激活当前按钮
-                document.querySelectorAll('.button-row button').forEach(b => {
-                    if (b.id === `btn-${shape}`) {
-                        b.classList.add('active');
-                    } else if (b.id.startsWith('btn-') && b.id !== 'btn-audio') {
-                        b.classList.remove('active');
-                    }
-                });
-            }
-
-            generateSphere(count) { const d=new Float32Array(count*3); for(let i=0;i<count;i++){const r=6*Math.cbrt(Math.random());const t=Math.random()*2*Math.PI;const p=Math.acos(2*Math.random()-1);d[i*3]=r*Math.sin(p)*Math.cos(t);d[i*3+1]=r*Math.sin(p)*Math.sin(t);d[i*3+2]=r*Math.cos(p);} return d;}
-            generateCube(count) { const d=new Float32Array(count*3); for(let i=0;i<count;i++){d[i*3]=(Math.random()-0.5)*8;d[i*3+1]=(Math.random()-0.5)*8;d[i*3+2]=(Math.random()-0.5)*8;} return d;}
-            async initMediaPipe() { const v = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"); this.hl = await HandLandmarker.createFromOptions(v, { baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" }, runningMode: "VIDEO", numHands: 1 }); navigator.mediaDevices.getUserMedia({ video: true }).then((s) => { const el = document.getElementById('webcam'); el.srcObject = s; el.addEventListener('loadeddata', () => { document.getElementById('loading').style.display = 'none'; this.loop(); }); }); }
-            loop() { const el=document.getElementById('webcam'); if(el.currentTime>0){const res=this.hl.detectForVideo(el,performance.now()); if(res.landmarks[0]){const lm=res.landmarks[0];const tips=[8,12,16,20];let d=0;tips.forEach(i=>d+=Math.sqrt(Math.pow(lm[i].x-lm[0].x,2)+Math.pow(lm[i].y-lm[0].y,2)));this.handOpenness+=((d/4>0.3?1:0)-this.handOpenness)*0.1;}else{this.handOpenness+=(1-this.handOpenness)*0.05;}} requestAnimationFrame(()=>this.loop()); }
-            toggleAudio() { if(this.ac)return; this.ac=new(window.AudioContext||window.webkitAudioContext)(); navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{const src=this.ac.createMediaStreamSource(s);this.an=this.ac.createAnalyser();this.an.fftSize=256;src.connect(this.an);document.getElementById('btn-audio').innerText="🎤 聆听中...";}); }
-            animate() { requestAnimationFrame(this.animate); const t=performance.now()*0.001; this.material.uniforms.uTime.value=t; if(this.material.uniforms.uMixFactor.value<1)this.material.uniforms.uMixFactor.value+=0.02; const target=(1.0-this.handOpenness); this.material.uniforms.uExplode.value+=(target-this.material.uniforms.uExplode.value)*0.1; if(this.an){const d=new Uint8Array(this.an.frequencyBinCount);this.an.getByteFrequencyData(d);let a=0;for(let i=0;i<d.length;i++)a+=d[i];this.audioLevel=a/d.length/255;this.material.uniforms.uAudioLevel.value=this.audioLevel;} this.controls.update(); this.composer.render(); }
-        }
-        window.app = new ParticleApp();
+        }).mount('#app');
     </script>
 </body>
 </html>
